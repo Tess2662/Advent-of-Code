@@ -42,26 +42,26 @@ int main() {
                     tt = strtok(NULL," ");
                     columns++;
                 }
-                count = (int *) calloc(sizeof(int), columns);
-                arr = (char *) calloc(sizeof(char) * chars, columns);
-                char *tmpPtr = NULL;
+                count = (int *) calloc(columns, sizeof(int));
+                arr = (char *) calloc(columns, sizeof(char) * chars);
+                tmpPtr = NULL;
                 size_t xx = 0;
-                for (int i = line - 1; i >= 0; --i) {
+                for (int i = line - 2; i >= 0; --i) {
                     fseek(f, offsets[i], SEEK_SET);
                     getline(&tmpPtr, &xx, f);
 //                    printf("wow %s", tmpPtr);
-                    char *st = strtok(tmpPtr, "[");
-                    char *tok = strtok(NULL, "]");
+//                    char *st = strtok(tmpPtr, "[");
+                    char *tok = strtok(tmpPtr, " ");
+//                    char *tok = strsep(&tmpPtr,"[");
                     while (tok != NULL) {
                         int pos = (tok - tmpPtr) / 4;
-                        *getPointer(chars,pos,count,arr) = tok[0];
-
+                        arr[pos * chars + count[pos]] = tok[1];
 //                        printf("%c\n", *getPointer(chars,pos,count,arr));
-
+                    char * tmp = &arr[chars*pos];
                         count[pos] += 1;
 
-                        st = strtok(NULL, "[");
-                        tok = strtok(NULL, "]");
+//                        st = strtok(NULL, "[");
+                        tok = strtok(NULL, " ");
                     }
                 }
                 fseek(f, offsets[line], SEEK_SET);
@@ -85,16 +85,16 @@ int main() {
             int from =  atoi(strsep(&linePtr, " ")) -1;
             strsep(&linePtr, " ");
             int to =  atoi(strsep(&linePtr, " ")) -1;
+            count[from]-=howMany;
             for (int i = 0; i < howMany; ++i) {
-                count[from]--;
-                char block = *(getPointer(chars, from,count,arr));
-                *(getPointer(chars,to,count,arr)) = block;
-                count[to]++;
+                char block = arr[from*chars + count[from]+i];
+               arr[to*chars + count[to]+i] = block;
             }
+            count[to]+=howMany;
         }
     }
     for (int i = 0; i < columns; ++i) {
-        printf("%c",*(getPointer(chars,i,count,arr)-1));
+        printf("%c",arr[chars*i + count[i]-1]);
     }
     return 0;
 }
