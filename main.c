@@ -26,8 +26,7 @@ int main() {
     int nodesCount = 0;
     struct node *currentNode = NULL;
     bool lsMode = false;
-    int min = INT_MAX;
-    int diff = 0;
+    int god = 0;
 
     while ((lineSize = getline(&linePtr, &n, f)) != -1) {
         firstToken = strtok(linePtr, " ");
@@ -88,20 +87,13 @@ int main() {
 //        }
 
         int sum = getFolderSizeWithoutSib(nodes+i);
-        if (i == 0) {
-            diff = 30000000-(70000000-sum);
-            printf("%d\n", diff);
-        }
-        if (sum >= diff) {
-            if (sum < min) {
-
-                printf("\nname: %s",(nodes+i)->name);
-                printf("%d %s", sum, (nodes+i)->name);
-                min = sum;
-            }
+        if (sum <= 100000) {
+            printf("\nname: %s",(nodes+i)->name);
+            god += sum;
+            printf("%d %s", sum, (nodes+i)->name);
         }
     }
-    printf("%d", min);
+    printf("%d", god);
 
 }
 int getFolderSize(struct node * n, char * parent) {
