@@ -5,65 +5,117 @@
 #include <sys/types.h>
 #include <malloc.h>
 #include <stdlib.h>
-#include <glib-2.0/glib.h>
 
-void wtf(gpointer p, gpointer p1, gpointer p3) {
-    printf("%s %s %s\n", (char *)p, (char *)p1, (char *)p3);
-}
-gboolean pred(gpointer a, gpointer b, gpointer c) {
-    printf("%s %s %s\n", a,b,c);
-    return (strcmp(a, b) == 0);
-}
+struct node {
+    struct node *parent;
+    int size;
+    char name[256];
+    struct node * sib;
+    struct node * child;
+};
+
+int getFolderSize(struct node * n, char * parent);
+int getFolderSizeWithoutSib(struct node * n);
 
 int main() {
     FILE *f = fopen("/home/tereza/CLionProjects/aoc2022/input.txt", "r");
-    char *linePtr = NULL;
+    char *linePtr = NULL, *firstToken = NULL, *secondToken = NULL, *thirdToken = NULL;
     size_t n = 0;
     size_t lineSize;
-    GHashTable *ht = g_hash_table_new(g_str_hash,g_str_equal);
-    int step = 0;
-    int hx = 0, hy = 0, tx = 0,ty = 0;
-    char* dir;
+    struct node *nodes = NULL;
+    int nodesCount = 0;
+    struct node *currentNode = NULL;
+    bool lsMode = false;
+    int min = INT_MAX;
+    int diff = 0;
+
     while ((lineSize = getline(&linePtr, &n, f)) != -1) {
-       dir = strtok(linePtr, " ");
-       step =(int) strtol(strtok(NULL, " "), NULL, 10);
-       if (strspn(dir, "RL"))
-       {
-           int sign = (*dir - 'O');
-           sign = sign/abs(sign);
-           hx += sign * step;
-           for (int i = 1; abs(hx - tx) > 1; ++i) {
-               tx +=sign;
-               ty = hy;
-               char *s = calloc(1,20);
-               sprintf(s,"%d,%d",tx,hy);
-               gpointer u;
+        firstToken = strtok(linePtr, " ");
+        secondToken = strtok(NULL, " ");
+        thirdToken = strtok(NULL, " ");
+        if (strcmp(firstToken, "$") == 0) {
+            lsMode = false;
+            if (strcmp(secondToken, "cd") == 0) {
+                if (strcmp(thirdToken, "..\n") == 0) {
+                    currentNode = currentNode->parent;
+                } else {
+                    nodesCount++;
+                    nodes = (struct node *) realloc(nodes, sizeof(struct node) * nodesCount);
+                    struct node * ptr = (nodes + nodesCount-1);
+                    *ptr = (struct node){.parent = currentNode, .size = 0, .name = *thirdToken, .child = NULL, .sib = NULL};
+                    if (currentNode != NULL) {
+                        if (currentNode->child == NULL) {
+                            currentNode->child = ptr;
+                        } else {
+                            struct node * s = currentNode->child;
+                            while (strcmp(s->name, ptr->name) != 0 && s->sib != NULL) {
+                                s = s->sib;
+                            }
+                            if (strcmp(s->name, ptr->name) == 0) {
+                                printf("equals %s %s", ptr->name, s->name);
+                                ptr = s;
+                            }
+                            else {
 
-//               g_hash_table_insert(ht,  s, s);
-                   g_hash_table_add(ht,  s);
-           }
-       }else {
-           int sign = ('O' - *dir);
-           sign = sign/abs(sign);
-          hy += sign* step;
-           for (int i = 1; abs(hy - ty) > 1; ++i) {
-               ty += sign;
-               tx = hx;
-               char *s = calloc(1,20);
-               sprintf(s,"%d,%d",hx,ty);
-
-                   g_hash_table_add(ht, s);
-
-           }
-       }
-       unsigned int xx = g_hash_table_size(ht);
-//        printf("%d", xx);
-
+                                s->sib = ptr;
+                            }
+                        }
+                    }
+                    strcpy(ptr->name, thirdToken);
+                    currentNode = ptr;
+//                    printf("%s %s %s", firstToken, secondToken, thirdToken);
+                }
+            }
+            else if (strcmp(secondToken, "ls\n") == 0) {
+                lsMode = true;
+            }
+        }
+        else if (strcmp(firstToken, "dir") != 0 && lsMode) {
+            // file in directory
+            currentNode->size +=(int) strtol(firstToken, NULL, 10);
+//            printf("%d", currentNode->size);
+        }
     }
-    GList * l = g_hash_table_get_keys(ht);
+    for (int i = 0; i < nodesCount; ++i) {
+//        if ((nodes+i)->child) {
+//            printf("%s ", (nodes+i)->child->name);
+//            struct node * c = (nodes+i)->child;
+//            struct node * s = c->sib;
+//            while (s != NULL) {
+//                printf("%s ", s->name);
+//                s = s->sib;
+//            }
+//        }
 
-    gpointer u = NULL;
-    g_hash_table_foreach(ht, wtf, NULL);
-    printf("%d interesting", g_hash_table_size(ht));
-    return 0;
+        int sum = getFolderSizeWithoutSib(nodes+i);
+        if (i == 0) {
+            diff = 30000000-(70000000-sum);
+            printf("%d\n", diff);
+        }
+        if (sum >= diff) {
+            if (sum < min) {
+
+                printf("\nname: %s",(nodes+i)->name);
+                printf("%d %s", sum, (nodes+i)->name);
+                min = sum;
+            }
+        }
+    }
+    printf("%d", min);
+
+}
+int getFolderSize(struct node * n, char * parent) {
+    if (n == NULL) {
+       return 0;
+    }
+//    printf("'''side parent of %s %s %d'''\n", n->name, parent, n->size);
+    return getFolderSize(n->sib, parent) + getFolderSize(n->child, parent) + n->size;
+}
+
+int getFolderSizeWithoutSib(struct node * n) {
+    if (n == NULL) {
+        return 0;
+    }
+//    printf("main parent %s\n", n->name);
+    return  getFolderSize(n->child, n->name) + n->size;
 }
