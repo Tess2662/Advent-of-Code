@@ -3,39 +3,34 @@
 #include <stdlib.h>
 
 int main() {
+    int win, lose, draw, score = 0;
+    win = 6;
+    lose = 0;
+    draw = 3;
+    int ascii[128] = {0};
+    ascii['X'] = 1;
+    ascii['Y'] = 2;
+    ascii['Z'] = 3;
+
+
     FILE *f = fopen("/home/tereza/CLionProjects/aoc2022/input.txt", "r");
     char buff[256];
-    int current = 0;
-    int m[3];
     while (fgets(buff, sizeof(buff), f)) {
-        if (isdigit(buff[0])) {
-            current += atoi(buff);
-        } else {
-            if (current > m[2])
-            {
-                if (current > m[1]) {
-                    if (current > m[0]) {
-                        m[2] = m[1];
-                        m[1] = m[0];
-                        m[0] = current;
-                    } else {
-                        m[2] = m[1];
-                        m[1] = current;
-                    }
-                } else {
-                    m[2] = current;
-                }
-            }
-            current = 0;
+        char enemy = buff[0];
+        char me = buff[2];
+        int diff = me-enemy-23;
+        if (diff == 0) {
+            printf("draw");
+            score += draw;
         }
+        else if (diff == 1 || diff == -2) {
+            score += win;
+        }
+        else {
+            score += lose;
+        }
+        printf("%d %d %c %c\n",diff,ascii[me],enemy,me);
+        score += ascii[me];
     }
-    if (current > m[2])
-        m[2] = current;
-    else if (current > m[1])
-        m[1] = current;
-    else if (current > m[0])
-        m[0] = current;
-
-    // print sum of array m
-    printf("%d", m[0] + m[1] + m[2]);
+    printf("%d", score);
 }
