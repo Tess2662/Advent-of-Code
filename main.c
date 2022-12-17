@@ -15,31 +15,36 @@ int main() {
     size_t lineSize;
     int sum = 1;
     int currentSum = 0;
-    int lines = 1;
-    int line = 0;
-    while ((lineSize = getline(&linePtr, &n, f)) != -1) {
-        line++;
-        linePtr[strcspn(linePtr, "\n\r")] = '\0';
-        char * tok = strtok(linePtr, " ");
-        int add = 0;
-        if (strcmp(tok,"noop") == 0) {
-            lines+=1;
-        }else {
-            add = (int) strtol(strtok(NULL," "),NULL, 10);
-            lines+=2;
-        }if ((lines-20) % 40 == 0) {
-           currentSum += (lines) * (sum + add);
-            printf("%d\n",(lines) * (sum + add));
-        }else if ((lines-20) % 40 == 1 && strcmp(tok,"addx") == 0) {
-            currentSum += (lines-1) * sum;
-            printf("%d\n",(lines-1) * (sum));
-        }
-        sum+= add;
+    int nextPos = 0;
 
+    while ((lineSize = getline(&linePtr, &n, f)) != -1) {
+        linePtr[strcspn(linePtr, "\n\r")] = '\0';
+        char *tok = strtok(linePtr, " ");
+        int add = 0;
+        if (strcmp(tok, "noop") == 0) {
+            char c = nextPos % 40 <= sum + 1 && nextPos % 40 >= sum - 1 ? '#' : '.';
+            printf("%c", c);
+            nextPos ++;
+        } else {
+            add = (int) strtol(strtok(NULL, " "), NULL, 10);
+            char c = nextPos % 40 <= sum + 1 && nextPos % 40 >= sum - 1 ? '#' : '.';
+            printf("%c", c);
+            nextPos++;
+            if ((nextPos) % 40 == 0) {
+                printf("\n");
+            }
+            c = nextPos % 40 <= sum + 1 && nextPos % 40 >= sum - 1 ? '#' : '.';
+            printf("%c", c);
+            nextPos++;
+        }
+        if ((nextPos) % 40 == 0) {
+            printf("\n");
+        }
+        sum += add;
 //        printf("%d\n",sum);
 
 
     }
-    printf("%d",currentSum);
+    printf("%d", currentSum);
     return 0;
 }
