@@ -10,24 +10,24 @@
 
 typedef struct Monkey {
     int number;
-    int items[256];
+    unsigned long items[256];
     int itemCount;
-    int test;
+    unsigned long test;
     int t;
     int f;
-    int allTimeCount;
-    int (*func)(int, int);
-    int funcArg;
+    unsigned long allTimeCount;
+    unsigned long (*func)(unsigned long, unsigned long);
+    unsigned long funcArg;
 } monkey;
 
-int add(int a, int b) {
+unsigned long add(unsigned long a, unsigned long b) {
     if (b == 0) {
         return a+a;
     }
     return a + b;
 }
 
-int mul(int a, int b) {
+unsigned long mul(unsigned long a, unsigned long b) {
     if (b == 0) {
         return a*a;
     }
@@ -42,6 +42,7 @@ int main() {
     int monkeyCount = 0;
     monkey *monkeys = NULL;
     char **tokens;
+    unsigned long gcd = 1;
     while ((lineSize = getline(&linePtr, &n, f)) != -1) {
         tokens = calloc(lineSize / 2 + 1, sizeof(char *));
         int c = 0;
@@ -61,21 +62,23 @@ int main() {
             int itok = 2;
             while (tokens[itok] != NULL) {
                 monkey* m = &monkeys[monkeyCount - 1];
-                m->items[m->itemCount] = (int) strtol(tokens[itok], NULL, 10);
+                m->items[m->itemCount] = (unsigned long) strtol(tokens[itok], NULL, 10);
                 m->itemCount++;
                 itok++;
             }
         }
         else if (strcmp(tokens[0],"Operation:") == 0) {
+            unsigned  long arg = (unsigned long) strtol(tokens[5], NULL, 10);
             if (strcmp(tokens[4], "+") == 0) {
                 monkeys[monkeyCount - 1].func = add;
             } else {
                 monkeys[monkeyCount - 1].func = mul;
             }
-            monkeys[monkeyCount - 1].funcArg = (int) strtol(tokens[5], NULL, 10);
+            monkeys[monkeyCount - 1].funcArg = arg;
         }
         else if (strcmp(tokens[0], "Test:") == 0) {
-           monkeys[monkeyCount - 1].test = (int) strtol(tokens[3], NULL, 10);
+           monkeys[monkeyCount - 1].test = (unsigned long) strtol(tokens[3], NULL, 10);
+                gcd *= monkeys[monkeyCount - 1].test;
         }
         else if (tokens[1] && strcmp(tokens[1], "true:") == 0) {
             monkeys[monkeyCount - 1].t = (int) strtol(tokens[5], NULL, 10);
@@ -85,12 +88,14 @@ int main() {
         }
         free(tokens);
     }
-    for (int i = 0; i < 20; ++i) {
+    for (int i = 0; i < 10000; ++i) {
         for (int j = 0; j < monkeyCount; ++j) {
             monkey* m = &monkeys[j];
-            for (int k = 0; k < m->itemCount;m->itemCount--,m->allTimeCount++) {
-                int temp = m->func(m->items[m->itemCount-1], m->funcArg);
-                temp /= 3;
+            int max = m->itemCount;
+            for (int k = 0; k < max; k++) {
+                unsigned long temp = m->func(m->items[k], m->funcArg);
+//                temp /= 3;
+temp %= gcd;
                 monkey *m2;
                 if (temp % m->test == 0) {
                     m2 = &monkeys[m->t];
@@ -100,12 +105,30 @@ int main() {
                 }
                 m2->items[m2->itemCount] = temp;
                 m2->itemCount++;
+                m->allTimeCount++;
+                m->itemCount--;
             }
+            if (i % 1000 == 999 || i == 19 || i == 0)
+            printf("Monkey %d %d has %lu items\n", m->number,i, m->allTimeCount);
         }
     }
+    ulong m1 = 0;
+    ulong m2 = 0;
     for (int i = 0; i < monkeyCount; ++i) {
-        printf("Monkey %d: %d\n", i + 1, monkeys[i].allTimeCount);
+        if (monkeys[i].allTimeCount > m2) {
+            if (monkeys[i].allTimeCount > m1) {
+                m2 = m1;
+                m1 = monkeys[i].allTimeCount;
+            }
+            else {
+                m2 = monkeys[i].allTimeCount;
+            }
+        }
+        printf("Monkey %d: %ld\n", i + 1, monkeys[i].allTimeCount);
     }
+    printf("Max: %ld\n", m1);
+    printf("Max2: %ld\n", m2);
+    printf("%ld\n", m1*m2);
 
 
     free(monkeys);
