@@ -7,130 +7,159 @@
 #include <stdlib.h>
 #include <glib-2.0/glib.h>
 #include <ctype.h>
+#include <assert.h>
 
-typedef struct Monkey {
-    int number;
-    unsigned long items[256];
-    int itemCount;
-    unsigned long test;
-    int t;
-    int f;
-    unsigned long allTimeCount;
-    unsigned long (*func)(unsigned long, unsigned long);
-    unsigned long funcArg;
-} monkey;
+char **map = NULL;
+int rows = 0;
+int columns = 0;
+int start_row = 0;
+int start_column = 0;
+int end_row = 0;
+int end_column = 0;
 
-unsigned long add(unsigned long a, unsigned long b) {
-    if (b == 0) {
-        return a+a;
+typedef struct Node {
+    int row;
+    int column;
+    struct Node *parent;
+    struct Node *left;
+    struct Node *right;
+    struct Node *up;
+    struct Node *down;
+    bool visited;
+    char value;
+} Node;
+
+Node **nodes = NULL;
+
+void next_moves(Node *node, Node ***res, int *size);
+
+void path_traversal();
+
+Node *get_sibling(int row, int column, int x, int y) {
+    if (row + y < 0 || row + y >= rows || column + x < 0 || column + x >= columns) {
+        return NULL;
     }
-    return a + b;
-}
-
-unsigned long mul(unsigned long a, unsigned long b) {
-    if (b == 0) {
-        return a*a;
-    }
-    return a * b;
-}
+    return &nodes[row + y][column + x];
+};
 
 int main() {
     FILE *f = fopen("/home/tereza/CLionProjects/aoc2022/input.txt", "r");
     char *linePtr = NULL;
     size_t n = 0;
     size_t lineSize;
-    int monkeyCount = 0;
-    monkey *monkeys = NULL;
-    char **tokens;
-    unsigned long gcd = 1;
     while ((lineSize = getline(&linePtr, &n, f)) != -1) {
-        tokens = calloc(lineSize / 2 + 1, sizeof(char *));
-        int c = 0;
-        char *tok = strtok(linePtr, " ");
-        tokens[c] = tok;
-        c++;
-        while ((tok = strtok(NULL, " "))) {
-            tokens[c] = tok;
-            c++;
-        }
-        if (strcmp(tokens[0], "Monkey") == 0) {
-            monkeyCount++;
-            monkeys = realloc(monkeys, sizeof(monkey) * monkeyCount);
-            monkeys[monkeyCount -
-                    1] = (monkey) {.allTimeCount = 0, .itemCount = 0, .number = monkeyCount, .test = 0, .t = 0, .f = 0};
-        } else if (strcmp(tokens[0], "Starting") == 0) {
-            int itok = 2;
-            while (tokens[itok] != NULL) {
-                monkey* m = &monkeys[monkeyCount - 1];
-                m->items[m->itemCount] = (unsigned long) strtol(tokens[itok], NULL, 10);
-                m->itemCount++;
-                itok++;
-            }
-        }
-        else if (strcmp(tokens[0],"Operation:") == 0) {
-            unsigned  long arg = (unsigned long) strtol(tokens[5], NULL, 10);
-            if (strcmp(tokens[4], "+") == 0) {
-                monkeys[monkeyCount - 1].func = add;
-            } else {
-                monkeys[monkeyCount - 1].func = mul;
-            }
-            monkeys[monkeyCount - 1].funcArg = arg;
-        }
-        else if (strcmp(tokens[0], "Test:") == 0) {
-           monkeys[monkeyCount - 1].test = (unsigned long) strtol(tokens[3], NULL, 10);
-                gcd *= monkeys[monkeyCount - 1].test;
-        }
-        else if (tokens[1] && strcmp(tokens[1], "true:") == 0) {
-            monkeys[monkeyCount - 1].t = (int) strtol(tokens[5], NULL, 10);
-        }
-        else if (tokens[1] && strcmp(tokens[1], "false:") == 0) {
-           monkeys[monkeyCount - 1].f = (int) strtol(tokens[5], NULL, 10);
-        }
-        free(tokens);
-    }
-    for (int i = 0; i < 10000; ++i) {
-        for (int j = 0; j < monkeyCount; ++j) {
-            monkey* m = &monkeys[j];
-            int max = m->itemCount;
-            for (int k = 0; k < max; k++) {
-                unsigned long temp = m->func(m->items[k], m->funcArg);
-//                temp /= 3;
-temp %= gcd;
-                monkey *m2;
-                if (temp % m->test == 0) {
-                    m2 = &monkeys[m->t];
-                }
-                else {
-                    m2 = &monkeys[m->f];
-                }
-                m2->items[m2->itemCount] = temp;
-                m2->itemCount++;
-                m->allTimeCount++;
-                m->itemCount--;
-            }
-            if (i % 1000 == 999 || i == 19 || i == 0)
-            printf("Monkey %d %d has %lu items\n", m->number,i, m->allTimeCount);
-        }
-    }
-    ulong m1 = 0;
-    ulong m2 = 0;
-    for (int i = 0; i < monkeyCount; ++i) {
-        if (monkeys[i].allTimeCount > m2) {
-            if (monkeys[i].allTimeCount > m1) {
-                m2 = m1;
-                m1 = monkeys[i].allTimeCount;
-            }
-            else {
-                m2 = monkeys[i].allTimeCount;
-            }
-        }
-        printf("Monkey %d: %ld\n", i + 1, monkeys[i].allTimeCount);
-    }
-    printf("Max: %ld\n", m1);
-    printf("Max2: %ld\n", m2);
-    printf("%ld\n", m1*m2);
+        linePtr[strcspn(linePtr, "\n\r")] = 0;
+        rows++;
+        // -delimiter
+        columns = (int) strlen(linePtr);
 
+        if (strchr(linePtr, 'S')) {
+            start_row = rows - 1;
+            start_column = (int) (strchr(linePtr, 'S') - linePtr);
+            linePtr[start_column] = 'a';
+        }
+        if (strchr(linePtr, 'E')) {
+            end_row = rows - 1;
+            end_column = (int) (strchr(linePtr, 'E') - linePtr);
+            linePtr[end_column] = 'z';
+        }
+//        map = realloc(map, (rows) * sizeof(char *));
+//        map[rows - 1] = malloc(columns * sizeof(char));
+//        memcpy(map[rows - 1], linePtr, columns);
+        nodes = realloc(nodes, (rows) * sizeof(Node *));
+        nodes[rows - 1] = malloc(columns * sizeof(Node));
+        for (int i = 0; i < columns; ++i) {
+            nodes[rows - 1][i].row = rows - 1;
+            nodes[rows - 1][i].column = i;
+            nodes[rows - 1][i].value = linePtr[i];
+            nodes[rows - 1][i].visited = false;
+            nodes[rows - 1][i].parent = NULL;
+        }
 
-    free(monkeys);
+    }
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < columns; ++j) {
+            nodes[i][j].left = get_sibling(i, j, -1, 0);
+            nodes[i][j].right = get_sibling(i, j, 1, 0);
+            nodes[i][j].up = get_sibling(i, j, 0, -1);
+            nodes[i][j].down = get_sibling(i, j, 0, 1);
+        }
+    }
+    path_traversal();
+
+    for (int i = 0; i < rows; ++i) {
+        free(nodes[i]);
+    }
+    free(nodes);
     return 0;
+}
+
+void path_traversal() {
+    int row = start_row;
+    int column = start_column;
+    int steps = 0;
+    Node* *nextMoves = NULL;
+    int nextMovesSize = 0;
+    Node **currentMoves = NULL;
+    int currentMovesSize = 0;
+    nextMoves = malloc(sizeof(Node*));
+    nextMoves[0] = &nodes[row][column];
+    Node * n = &nodes[row][column];
+    nextMovesSize = 1;
+    while (nextMovesSize > 0 && !(n->row == end_row && n->column == end_column)) {
+        // increment step
+        steps++;
+        // free previous currentMoves (could be NULL, how fix this ?)
+        free(currentMoves);
+        // update currentMoves
+        currentMoves = nextMoves;
+        currentMovesSize = nextMovesSize;
+        // reset nextMoves
+        nextMoves = NULL;
+        nextMovesSize = 0;
+
+        while (currentMovesSize > 0 && !(n->row == end_row && n->column == end_column)) {
+            currentMovesSize--;
+            n = currentMoves[currentMovesSize];
+            next_moves(n, &nextMoves, &nextMovesSize);
+        }
+    }
+    printf("Steps: %d", steps);
+    while (n->parent != NULL) {
+        n->value = '#';
+        n = n->parent;
+    }
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < columns; ++j) {
+            printf("%c", nodes[i][j].value);
+        }
+        printf("\n");
+    }
+
+}
+
+void next_moves(Node *node, Node ***res, int *size) {
+    if (node->visited) {
+        return;
+    }
+    node->visited = true;
+    Node *moves[4] = {
+            node->left,
+            node->right,
+            node->up,
+            node->down
+    };
+    for (int i = 0; i < 4; ++i) {
+        Node *move = moves[i];
+        if (move == NULL || move->visited) {
+            continue;
+        }
+        if (move->value - node->value > 1) {
+            continue;
+        }
+        move->parent = node;
+        *res = (Node **) realloc(*res, (*size + 1) * sizeof(Node *));
+        (*res)[*size] = move;
+        *size += 1;
+    }
 }
