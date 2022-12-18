@@ -30,6 +30,8 @@ typedef struct Node {
 } Node;
 
 Node **nodes = NULL;
+Node* *nextMoves = NULL;
+int nextMovesSize = 0;
 
 void next_moves(Node *node, Node ***res, int *size);
 
@@ -75,6 +77,13 @@ int main() {
             nodes[rows - 1][i].visited = false;
             nodes[rows - 1][i].parent = NULL;
         }
+        for (int i = 0; i < columns; ++i) {
+            if (linePtr[i] == 'a') {
+                nextMovesSize++;
+                nextMoves = realloc(nextMoves, (nextMovesSize) * sizeof(Node *));
+                nextMoves[nextMovesSize - 1] = &nodes[rows - 1][i];
+            }
+        }
 
     }
     for (int i = 0; i < rows; ++i) {
@@ -98,14 +107,9 @@ void path_traversal() {
     int row = start_row;
     int column = start_column;
     int steps = 0;
-    Node* *nextMoves = NULL;
-    int nextMovesSize = 0;
     Node **currentMoves = NULL;
     int currentMovesSize = 0;
-    nextMoves = malloc(sizeof(Node*));
-    nextMoves[0] = &nodes[row][column];
     Node * n = &nodes[row][column];
-    nextMovesSize = 1;
     while (nextMovesSize > 0 && !(n->row == end_row && n->column == end_column)) {
         // increment step
         steps++;
