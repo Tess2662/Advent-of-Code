@@ -9,161 +9,129 @@
 #include <ctype.h>
 #include <assert.h>
 
-char **map = NULL;
-int rows = 0;
-int columns = 0;
-int start_row = 0;
-int start_column = 0;
-int end_row = 0;
-int end_column = 0;
-
-typedef struct Node {
-    int row;
-    int column;
-    struct Node *parent;
-    struct Node *left;
-    struct Node *right;
-    struct Node *up;
-    struct Node *down;
-    bool visited;
-    char value;
-} Node;
-
-Node **nodes = NULL;
-Node* *nextMoves = NULL;
-int nextMovesSize = 0;
-
-void next_moves(Node *node, Node ***res, int *size);
-
-void path_traversal();
-
-Node *get_sibling(int row, int column, int x, int y) {
-    if (row + y < 0 || row + y >= rows || column + x < 0 || column + x >= columns) {
-        return NULL;
-    }
-    return &nodes[row + y][column + x];
-};
-
 int main() {
     FILE *f = fopen("/home/tereza/CLionProjects/aoc2022/input.txt", "r");
     char *linePtr = NULL;
     size_t n = 0;
     size_t lineSize;
+    int count = 0;
+    int yMax = 0;
+    int xMax = 0;
+    int xMin = INT_MAX;
+    GHashTable *ht = g_hash_table_new(g_str_hash, g_str_equal);
     while ((lineSize = getline(&linePtr, &n, f)) != -1) {
-        linePtr[strcspn(linePtr, "\n\r")] = 0;
-        rows++;
-        // -delimiter
-        columns = (int) strlen(linePtr);
+        char *nCoord = NULL;
+        char *cSep = NULL;
+        char *a = strtok_r(linePtr, ",", &cSep);
+        char *b = strtok_r(NULL, ">", &cSep);
+        int column = (int) strtol(a, NULL, 10);
+        int row = (int) strtol(b, NULL, 10);
+        if (row > yMax) {
+            yMax = row;
+        }
+        while (*cSep != '\0') {
+            a = strtok_r(NULL, ",", &cSep);
+            b = strtok_r(NULL, ">", &cSep);
 
-        if (strchr(linePtr, 'S')) {
-            start_row = rows - 1;
-            start_column = (int) (strchr(linePtr, 'S') - linePtr);
-            linePtr[start_column] = 'a';
-        }
-        if (strchr(linePtr, 'E')) {
-            end_row = rows - 1;
-            end_column = (int) (strchr(linePtr, 'E') - linePtr);
-            linePtr[end_column] = 'z';
-        }
-//        map = realloc(map, (rows) * sizeof(char *));
-//        map[rows - 1] = malloc(columns * sizeof(char));
-//        memcpy(map[rows - 1], linePtr, columns);
-        nodes = realloc(nodes, (rows) * sizeof(Node *));
-        nodes[rows - 1] = malloc(columns * sizeof(Node));
-        for (int i = 0; i < columns; ++i) {
-            nodes[rows - 1][i].row = rows - 1;
-            nodes[rows - 1][i].column = i;
-            nodes[rows - 1][i].value = linePtr[i];
-            nodes[rows - 1][i].visited = false;
-            nodes[rows - 1][i].parent = NULL;
-        }
-        for (int i = 0; i < columns; ++i) {
-            if (linePtr[i] == 'a') {
-                nextMovesSize++;
-                nextMoves = realloc(nextMoves, (nextMovesSize) * sizeof(Node *));
-                nextMoves[nextMovesSize - 1] = &nodes[rows - 1][i];
+            int tCol = (int) strtol(a, NULL, 10);
+            int tRow = (int) strtol(b, NULL, 10);
+
+            if (tRow > yMax) {
+                yMax = tRow;
             }
-        }
+            if (tCol > xMax) {
+                xMax = tCol;
+            }
+            if (tCol < xMin) {
+                xMin = tCol;
+            }
+            int ca = column;
+            int cb = tCol;
+            int ra = row;
+            int rb = tRow;
 
-    }
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < columns; ++j) {
-            nodes[i][j].left = get_sibling(i, j, -1, 0);
-            nodes[i][j].right = get_sibling(i, j, 1, 0);
-            nodes[i][j].up = get_sibling(i, j, 0, -1);
-            nodes[i][j].down = get_sibling(i, j, 0, 1);
-        }
-    }
-    path_traversal();
+            if (tCol > column) {
+                ca = tCol;
+                cb = column;
+            }
+            if (tRow > row) {
+                ra = tRow;
+                rb = row;
+            }
+            if (ca != cb) {
+                for (int i = cb; i <= ca; ++i) {
+                    char *s = calloc(8, sizeof(char));
+                    sprintf(s, "%d,%d", row, i);
+                    g_hash_table_add(ht, s);
+                }
+            }
+            if (ra != rb) {
+                for (int i = rb; i <= ra; ++i) {
+                    char *s = calloc(8, sizeof(char));
+                    sprintf(s, "%d,%d", i, column);
+                    g_hash_table_add(ht, s);
+                }
+            }
 
-    for (int i = 0; i < rows; ++i) {
-        free(nodes[i]);
-    }
-    free(nodes);
-    return 0;
-}
-
-void path_traversal() {
-    int row = start_row;
-    int column = start_column;
-    int steps = 0;
-    Node **currentMoves = NULL;
-    int currentMovesSize = 0;
-    Node * n = &nodes[row][column];
-    while (nextMovesSize > 0 && !(n->row == end_row && n->column == end_column)) {
-        // increment step
-        steps++;
-        // free previous currentMoves (could be NULL, how fix this ?)
-        free(currentMoves);
-        // update currentMoves
-        currentMoves = nextMoves;
-        currentMovesSize = nextMovesSize;
-        // reset nextMoves
-        nextMoves = NULL;
-        nextMovesSize = 0;
-
-        while (currentMovesSize > 0 && !(n->row == end_row && n->column == end_column)) {
-            currentMovesSize--;
-            n = currentMoves[currentMovesSize];
-            next_moves(n, &nextMoves, &nextMovesSize);
+            column = tCol;
+            row = tRow;
         }
     }
-    printf("Steps: %d", steps);
-    while (n->parent != NULL) {
-        n->value = '#';
-        n = n->parent;
-    }
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < columns; ++j) {
-            printf("%c", nodes[i][j].value);
+
+    for (int i = 0; i < yMax+5; ++i) {
+        for (int j = 480; j <= 520; ++j) {
+            printf("%c", g_hash_table_contains(ht, g_strdup_printf("%d,%d", i, j)) ? '#' : '.');
         }
         printf("\n");
     }
-
-}
-
-void next_moves(Node *node, Node ***res, int *size) {
-    if (node->visited) {
-        return;
-    }
-    node->visited = true;
-    Node *moves[4] = {
-            node->left,
-            node->right,
-            node->up,
-            node->down
-    };
-    for (int i = 0; i < 4; ++i) {
-        Node *move = moves[i];
-        if (move == NULL || move->visited) {
-            continue;
+    bool run = true;
+    while (run) {
+        int row = 0;
+        int col = 500;
+        int run2 = true;
+        while (run2) {
+            char *s = calloc(8, sizeof(char));
+            if (row > yMax) {
+                sprintf(s, "%d,%d", row, col);
+                g_hash_table_add(ht, s);
+                run2 = false;
+                count++;
+                break;
+            }
+            sprintf(s, "%d,%d", row+1, col);
+            if (g_hash_table_contains(ht, s)) {
+                sprintf(s, "%d,%d", row+1, col-1);
+                if (g_hash_table_contains(ht, s)) {
+                    sprintf(s, "%d,%d", row+1, col+1);
+                    if (g_hash_table_contains(ht, s)) {
+                        if (row == 0 && col == 500) {
+                            run = false;
+                            run2 = false;
+                        }
+                        count++;
+                        sprintf(s, "%d,%d", row, col);
+                        g_hash_table_add(ht, s);
+                        run2 = false;
+                    }else {
+                        row++;
+                        col++;
+                    }
+                }else {
+                    row++;
+                    col--;
+                }
+            }else {
+                row++;
+            }
         }
-        if (move->value - node->value > 1) {
-            continue;
-        }
-        move->parent = node;
-        *res = (Node **) realloc(*res, (*size + 1) * sizeof(Node *));
-        (*res)[*size] = move;
-        *size += 1;
     }
+    for (int i = 0; i < yMax+5; ++i) {
+        for (int j = 480; j <= 520; ++j) {
+            printf("%c", g_hash_table_contains(ht, g_strdup_printf("%d,%d", i, j)) ? '#' : '.');
+        }
+        printf("\n");
+    }
+    printf("%d", count);
+
+    return 0;
 }
