@@ -16,8 +16,6 @@ int main() {
     size_t lineSize;
     int count = 0;
     int yMax = 0;
-    int xMax = 0;
-    int xMin = INT_MAX;
     GHashTable *ht = g_hash_table_new(g_str_hash, g_str_equal);
     while ((lineSize = getline(&linePtr, &n, f)) != -1) {
         char *nCoord = NULL;
@@ -38,12 +36,6 @@ int main() {
 
             if (tRow > yMax) {
                 yMax = tRow;
-            }
-            if (tCol > xMax) {
-                xMax = tCol;
-            }
-            if (tCol < xMin) {
-                xMin = tCol;
             }
             int ca = column;
             int cb = tCol;
@@ -77,13 +69,6 @@ int main() {
             row = tRow;
         }
     }
-
-    for (int i = 0; i < yMax+5; ++i) {
-        for (int j = 480; j <= 520; ++j) {
-            printf("%c", g_hash_table_contains(ht, g_strdup_printf("%d,%d", i, j)) ? '#' : '.');
-        }
-        printf("\n");
-    }
     bool run = true;
     while (run) {
         int row = 0;
@@ -92,11 +77,8 @@ int main() {
         while (run2) {
             char *s = calloc(8, sizeof(char));
             if (row > yMax) {
-                sprintf(s, "%d,%d", row, col);
-                g_hash_table_add(ht, s);
+                run = false;
                 run2 = false;
-                count++;
-                break;
             }
             sprintf(s, "%d,%d", row+1, col);
             if (g_hash_table_contains(ht, s)) {
@@ -104,10 +86,6 @@ int main() {
                 if (g_hash_table_contains(ht, s)) {
                     sprintf(s, "%d,%d", row+1, col+1);
                     if (g_hash_table_contains(ht, s)) {
-                        if (row == 0 && col == 500) {
-                            run = false;
-                            run2 = false;
-                        }
                         count++;
                         sprintf(s, "%d,%d", row, col);
                         g_hash_table_add(ht, s);
@@ -124,12 +102,6 @@ int main() {
                 row++;
             }
         }
-    }
-    for (int i = 0; i < yMax+5; ++i) {
-        for (int j = 480; j <= 520; ++j) {
-            printf("%c", g_hash_table_contains(ht, g_strdup_printf("%d,%d", i, j)) ? '#' : '.');
-        }
-        printf("\n");
     }
     printf("%d", count);
 
