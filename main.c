@@ -9,37 +9,123 @@
 #include <ctype.h>
 #include <assert.h>
 
+typedef struct {
+    int x;
+    int y;
+    int z;
+    bool visited;
+    bool lava;
+} Node;
+
+typedef struct {
+    bool visited;
+    bool lava;
+} Cube;
+
+int minX, minY, minZ, maxX, maxY, maxZ;
+
 int main() {
     FILE *f = fopen("/home/tereza/CLionProjects/aoc2022/input.txt", "r");
     char *linePtr = NULL;
     size_t n = 0;
     size_t lineSize;
     int count = 0;
-    int * lines = NULL;
-    GHashTable *ht = g_hash_table_new(g_str_hash, g_str_equal);
+    Node *lines = NULL;
+    Cube ***cubes = NULL;
     while ((lineSize = getline(&linePtr, &n, f)) != -1) {
         count++;
-        lines = realloc(lines, count * sizeof(int) * 3);
+        lines = realloc(lines, count * sizeof(Node));
         int x = (int) strtol(strtok(linePtr, ","), NULL, 10);
         int y = (int) strtol(strtok(NULL, ","), NULL, 10);
         int z = (int) strtol(strtok(NULL, ","), NULL, 10);
-        int t[3] = {x, y, z};
-        memcpy(lines + (count - 1) * 3,t , sizeof(int) * 3);
-}
-    int sides = 0;
-    for (int i = 0; i < count; ++i) {
-        sides += 6;
-        for (int j = 0; j < count; ++j) {
-            int sum = 0;
-            for (int k = 0; k < 3; ++k) {
-                sum += abs(lines[i*3+k] - lines[j*3+k]);
-            }
-            if (sum == 1) {
-sides--;
+        lines[count - 1] = (Node) {x, y, z, false, true};
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (z < minZ) minZ = z;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+        if (z > maxZ) maxZ = z;
+
+
+    }
+    minX--;
+    minY--;
+    minZ--;
+    maxX++;
+    maxY++;
+    maxZ++;
+    maxX -= minX;
+    maxY -= minY;
+    maxZ -= minZ;
+
+
+    cubes = calloc((maxX + 1), sizeof(Cube **));
+    for (int i = 0; i <= maxX; i++) {
+        cubes[i] = calloc((maxY + 1), sizeof(Cube *));
+        for (int j = 0; j <= maxY; j++) {
+            cubes[i][j] = calloc((maxZ + 1), sizeof(Cube));
+            for (int k = 0; k <= maxZ; k++) {
+                cubes[i][j][k] = (Cube) {false, false};
             }
         }
     }
-    printf("%d", sides);
+
+    for (int i = 0; i < count; ++i) {
+        cubes[lines[i].x - minX][lines[i].y - minY][lines[i].z - minZ].lava = true;
+    }
+
     free(lines);
+
+    int sides = 0;
+    int queueSize = 1;
+    int *queue = calloc(queueSize, 3 * sizeof(int));
+    int nb[6][3] = {{1,  0,  0},
+                    {-1, 0,  0},
+                    {0,  1,  0},
+                    {0,  -1, 0},
+                    {0,  0,  1},
+                    {0,  0,  -1}};
+    while (queueSize != 0) {
+        queueSize--;
+        int x = queue[queueSize * 3];
+        int y = queue[queueSize * 3 + 1];
+        int z = queue[queueSize * 3 + 2];
+        cubes[x][y][z].visited = true;
+        for (int i = 0; i < 6; ++i) {
+            int newX = x + nb[i][0];
+            int newY = y + nb[i][1];
+            int newZ = z + nb[i][2];
+            if (newX >= 0 && newX <= maxX && newY >= 0 && newY <= maxY && newZ >= 0 && newZ <= maxZ) {
+                if (!cubes[newX][newY][newZ].visited) {
+                    if (cubes[newX][newY][newZ].lava) {
+                        sides++;
+                    } else {
+                        queueSize++;
+                        queue = realloc(queue, queueSize * 3 * sizeof(int));
+                        queue[queueSize * 3 - 3] = newX;
+                        queue[queueSize * 3 - 2] = newY;
+                        queue[queueSize * 3 - 1] = newZ;
+                        cubes[newX][newY][newZ].visited = true;
+                    }
+                }
+            }
+        }
+
+    }
+
+    free(queue);
+
+    // free cubes
+    for (int i = 0; i <= maxX; i++) {
+        for (int j = 0; j <= maxY; j++) {
+            free(cubes[i][j]);
+        }
+        free(cubes[i]);
+    }
+    free(cubes);
+
+    printf("%d", sides);
+
+    free(linePtr);
     return 0;
 }
