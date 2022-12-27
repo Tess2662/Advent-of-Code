@@ -10,143 +10,84 @@
 #include <assert.h>
 #include <math.h>
 
-struct Node{
+typedef struct mNode Node;
+
+struct mNode {
     long value;
-    struct Node *prev;
-    struct Node *next;
+    bool computed;
+    char left[5];
+    char right[5];
+    char op;
 };
+
+Node *root;
 
 char *linePtr = NULL;
 size_t n = 0;
 size_t lineSize;
 int count = 0;
-int const elementsCount = 5000;
 
-struct Node nodes[5000];
-struct Node * nodeQueue[5000];
-struct Node *zero;
+GHashTable *ht;
 
+
+long get_value(Node *x) {
+    assert(x != NULL);
+    if (x->computed) {
+        return x->value;
+    }
+    long v1 = get_value(g_hash_table_lookup(ht, x->left));
+    long v2 = get_value(g_hash_table_lookup(ht, x->right));
+    switch (x->op) {
+        case '+':
+            x->value = v1 + v2;
+            break;
+        case '-':
+            x->value = v1 - v2;
+            break;
+        case '*':
+            x->value = v1 * v2;
+            break;
+        case '/':
+            x->value = v1 / v2;
+            break;
+    }
+    printf("%ld %c %ld = %ld\n",v1,x->op,v2,x->value);
+    x->computed = true;
+    return x->value;
+
+
+}
 
 int main() {
-    long value;
-    int prev;
-    int next;
+    ht = g_hash_table_new(g_str_hash, g_str_equal);
     FILE *f = fopen("/home/tereza/CLionProjects/aoc2022/input.txt", "r");
     while ((lineSize = getline(&linePtr, &n, f)) != -1) {
-        value = strtol(linePtr, NULL, 10)*811589153;
-        next = count + 1;
-        prev = count - 1;
-        if (count == 0) {
-            prev = elementsCount-1;
+        linePtr[strcspn(linePtr, "\r\n")] = '\0';
+        char *name = calloc(sizeof(char), 5);
+        strcpy(name, strtok(linePtr, ":"));
+        Node *s = calloc(sizeof(Node), 1);
+        if (isdigit(linePtr[6])) {
+            s->value = (long) strtol(linePtr + 6, NULL, 10);
+            s->computed = true;
+        } else {
+            strtok(NULL, " ");
+            strtok(NULL, " ");
+            strcpy(s->left, linePtr + 6);
+            s->op = linePtr[11];
+            strcpy(s->right, linePtr + 13);
+            s->computed = false;
         }
-        if (count == elementsCount-1) {
-            next = 0;
+        g_hash_table_insert(ht, name, s);
+        if (strcmp(name, "root") == 0) {
+            root = s;
         }
-        nodes[count] = (struct Node) {value,  &nodes[prev],  &nodes[next]};
-        nodeQueue[count] = &nodes[count];
-        if (value == 0) {
-            zero = &nodes[count];
-        }
-        count++;
+
     }
 
 
-
-    struct Node * toBeMoved;
-    struct Node * currentLocation;
-    long tempValue;
-    for (int l = 0; l < 10; ++l)
-    {
-        for (long i = 0; i < elementsCount; ++i) {
-            toBeMoved = nodeQueue[i];
-            currentLocation = toBeMoved;
-            tempValue = toBeMoved->value;
-            toBeMoved->value %= (elementsCount - 1);
-            if (toBeMoved->value > 0) {
-                for (long j = 0; j < toBeMoved->value; ++j) {
-                    currentLocation =  currentLocation->next;
-                }
-                struct Node * desiredNext = currentLocation->next;
-                struct Node * desiredPrev = currentLocation;
-                // removing node
-
-                if (desiredPrev == toBeMoved->prev || currentLocation == toBeMoved) {
-                    printf("ass\n");
-                    goto ass;
-                }
-                toBeMoved->prev->next = toBeMoved->next;
-                toBeMoved->next->prev = toBeMoved->prev;
-
-                // moving node
-                toBeMoved->prev =  currentLocation;
-                toBeMoved->next = currentLocation->next;
-
-                toBeMoved->next->prev = toBeMoved;
-                toBeMoved->prev->next = toBeMoved;
-
-                assert(desiredNext != desiredPrev);
-                assert(desiredPrev != toBeMoved);
-                assert(toBeMoved->next == desiredNext);
-                assert(toBeMoved->prev == desiredPrev);
-                assert(desiredPrev->next == toBeMoved);
-                assert(desiredNext->prev == toBeMoved);
-
-
-            }
-            else if (toBeMoved->value < 0) {
-                for (long j = toBeMoved->value; j < 0 ; ++j) {
-                    currentLocation =  currentLocation->prev;
-                }
-                struct Node * desiredNext = currentLocation;
-                struct Node * desiredPrev = currentLocation->prev;
-                if (desiredNext == toBeMoved->next || currentLocation == toBeMoved) {
-                    printf("ass\n");
-                    goto ass;
-                }
-                // removing node
-                toBeMoved->prev->next = toBeMoved->next;
-                toBeMoved->next->prev = toBeMoved->prev;
-
-                // moving node
-                toBeMoved->next =  currentLocation;
-                toBeMoved->prev = currentLocation->prev;
-
-                toBeMoved->next->prev = toBeMoved;
-                toBeMoved->prev->next = toBeMoved;
-
-                assert(desiredNext != desiredPrev);
-                assert(desiredPrev != toBeMoved);
-                assert(toBeMoved->next == desiredNext);
-                assert(toBeMoved->prev == desiredPrev);
-                assert(desiredPrev->next == toBeMoved);
-                assert(desiredNext->prev == toBeMoved);
-
-            }
-            ass:
-            toBeMoved->value = tempValue;
-
-
-            /*     x = zero;
-                 for (int i = elementsCount; i > 0; --i) {
-                     printf("%d ", x->value)    ;
-                     x = x->prev;
-                 }
-                 printf("\n");*/
-
-        }
-    }
-    long mix = 0;
-    for (long i = 0; i < 3; ++i) {
-        for (long j = 0; j < 1000; ++j) {
-            zero = zero->next;
-        }
-        mix+=zero->value;
-        printf("%ld\n",zero->value);
-    }
-
-
-    printf("%ld",mix);
+    printf("--- %ld ---", get_value(root));
     free(linePtr);
+    g_hash_table_destroy(ht);
 
     return 0;
 }
