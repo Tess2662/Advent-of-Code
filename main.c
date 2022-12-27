@@ -46,37 +46,44 @@ int main() {
         nodeQueue[count] = &nodes[count];
         if (value == 0) {
             zero = &nodes[count];
-            printf("%d zero", count);
         }
         count++;
     }
 
 
-//    struct Node * x = zero;
-//    for (int i = 0; i < elementsCount; ++i) {
-//        printf("%d ", x->value)    ;
-//        x = x->next;
-//    }
-//    printf("\n");
-//    x = zero;
-//    for (int i = elementsCount; i > 0; --i) {
-//        printf("%d ", x->value)    ;
-//        x = x->prev;
-//    }
-//    printf("\n");
+    struct Node * x = zero;
+    for (int i = 0; i < elementsCount; ++i) {
+        printf("%d ", x->value)    ;
+        x = x->next;
+    }
+    printf("\n");
+    x = zero;
+    for (int i = elementsCount; i > 0; --i) {
+        printf("%d ", x->value)    ;
+        x = x->prev;
+    }
+    printf("\n");
 
     struct Node * toBeMoved;
     struct Node * currentLocation;
+    int tempValue;
     for (int i = 0; i < elementsCount; ++i) {
         toBeMoved = nodeQueue[i];
         currentLocation = toBeMoved;
+        tempValue = toBeMoved->value;
+        toBeMoved->value %= (elementsCount - 1);
         if (toBeMoved->value > 0) {
             for (int j = 0; j < toBeMoved->value; ++j) {
                 currentLocation =  currentLocation->next;
             }
-
-            printf("%d\n", currentLocation->value);
+            struct Node * desiredNext = currentLocation->next;
+            struct Node * desiredPrev = currentLocation;
             // removing node
+
+            if (desiredPrev == toBeMoved->prev || currentLocation == toBeMoved) {
+                printf("ass\n");
+                goto ass;
+            }
             toBeMoved->prev->next = toBeMoved->next;
             toBeMoved->next->prev = toBeMoved->prev;
 
@@ -87,12 +94,27 @@ int main() {
             toBeMoved->next->prev = toBeMoved;
             toBeMoved->prev->next = toBeMoved;
 
+            assert(desiredNext != desiredPrev);
+            assert(desiredPrev != toBeMoved);
+           assert(toBeMoved->next == desiredNext);
+            assert(toBeMoved->prev == desiredPrev);
+            assert(desiredPrev->next == toBeMoved);
+            assert(desiredNext->prev == toBeMoved);
+            ass:
+            printf("%d\n",i);
+
+
         }
         else if (toBeMoved->value < 0) {
             for (int j = toBeMoved->value; j < 0 ; ++j) {
                 currentLocation =  currentLocation->prev;
             }
-            printf("%d\n", currentLocation->value);
+            struct Node * desiredNext = currentLocation;
+            struct Node * desiredPrev = currentLocation->prev;
+            if (desiredNext == toBeMoved->next || currentLocation == toBeMoved) {
+                printf("ass\n");
+                goto ass2;
+            }
                   // removing node
             toBeMoved->prev->next = toBeMoved->next;
             toBeMoved->next->prev = toBeMoved->prev;
@@ -104,13 +126,23 @@ int main() {
             toBeMoved->next->prev = toBeMoved;
             toBeMoved->prev->next = toBeMoved;
 
+            assert(desiredNext != desiredPrev);
+            assert(desiredPrev != toBeMoved);
+            assert(toBeMoved->next == desiredNext);
+            assert(toBeMoved->prev == desiredPrev);
+            assert(desiredPrev->next == toBeMoved);
+            assert(desiredNext->prev == toBeMoved);
+            ass2:
+            printf("%d\n",i);
+
         }
-//        struct Node * x = zero;
-//        for (int i = 0; i < elementsCount; ++i) {
-//            printf("%d ", x->value)    ;
-//            x = x->next;
-//        }
-//        printf("\n");
+        toBeMoved->value = tempValue;
+        struct Node * x = zero;
+        for (int i = 0; i < elementsCount; ++i) {
+            printf("%d ", x->value)    ;
+            x = x->next;
+        }
+        printf("\n");
 
    /*     x = zero;
         for (int i = elementsCount; i > 0; --i) {
