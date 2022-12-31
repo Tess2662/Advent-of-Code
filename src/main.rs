@@ -1,92 +1,177 @@
+use std::collections::HashMap;
 use std::detect::__is_feature_detected::xsave;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
-fn main() {
-    // defines 2D dynamic array
-    let mut grid: Vec<Vec<char>> = Vec::new();
-    // let mut grid: [[char; 150]; 200] = [[' '; 150]; 200];
-    let mut moves: String = String::new();
-    // Open the file in read-only mode
-    let file =
-        File::open("/home/tereza/CLionProjects/aoc2022/input.txt").expect("Failed to open file");
+use std::io::{self, BufRead};
 
-    // Create a BufReader from the file
-    let mut reader = BufReader::new(file);
+// coordinates around point x,y ( N,NW, NE, S, SE, SW, W, NW, SW, E, NE, SE)
+const ELF_SURROUNDINGS: [[[i32; 2]; 3]; 4] = [
+    [[0, -1], [-1, -1], [1, -1]],
+    [[0, 1], [-1, 1], [1, 1]],
+    [[-1, 0], [-1, -1], [-1, 1]],
+    [[1, 0], [1, -1], [1, 1]],
+];
 
-    let mut column: i32 = 0;
-    let mut row: i32 = 0;
-    let mut grid_loaded = false;
-    // Read the file line by line
-    for (size, line) in reader.lines().enumerate() {
-        let line = line.expect("Failed to read line");
-        if size == 0 {
-            column = line.find(".").expect("Failed to find .") as i32;
+#[derive(Copy, Clone, PartialEq)]
+enum Dir {
+    N = 0,
+    S,
+    W,
+    E,
+}
+
+
+impl Dir {
+    fn next_dir(&self) -> Dir {
+        match self {
+            Dir::N => Dir::S,
+            Dir::E => Dir::N,
+            Dir::S => Dir::W,
+            Dir::W => Dir::E,
         }
+    }
+}
 
-        if (grid_loaded) {
-            moves.extend(line.chars());
-        } else {
-            if line.is_empty() {
-                grid_loaded = true;
+struct Elf {
+    pos: (i32, i32),
+    next_pos: (i32, i32),
+    next_dir: Dir,
+    go_next: bool,
+}
+
+impl Elf {
+    fn next_pos(&self, elves: &Vec<Elf>) -> Option<((i32, i32), Dir)> {
+        if self.are_surroundings_empty(&elves) {
+            return None;
+        }
+        let mut next_dir = self.next_dir;
+        loop {
+            if self.is_surrounding_empty(&elves, ELF_SURROUNDINGS[next_dir as usize]) {
+                return Some(match next_dir {
+                    Dir::N => ((self.pos.0, self.pos.1 - 1), next_dir),
+                    Dir::S => ((self.pos.0, self.pos.1 + 1), next_dir),
+                    Dir::W => ((self.pos.0 - 1, self.pos.1), next_dir),
+                    Dir::E => ((self.pos.0 + 1, self.pos.1), next_dir),
+                });
+            }
+            next_dir = next_dir.next_dir();
+            if (next_dir == self.next_dir) {
+                return None;
+            }
+        }
+    }
+
+    fn is_surrounding_empty(&self, elves: &Vec<Elf>, arr: [[i32; 2]; 3]) -> bool {
+        for sur_pos in arr {
+            let sur_pos = (self.pos.0 + sur_pos[0], self.pos.1 + sur_pos[1]);
+            for elf in elves {
+                if elf.pos == sur_pos {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    fn are_surroundings_empty(&self, elves: &Vec<Elf>) -> bool {
+        for sur in ELF_SURROUNDINGS {
+            if !self.is_surrounding_empty(&elves, sur) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+fn main() {
+    let mut elves: Vec<Elf> = Vec::new();
+    let mut elves_ht: HashMap<(i32, i32), bool> = HashMap::new();
+    let f = File::open("/home/tereza/CLionProjects/aoc2022/input.txt").expect("Failed to open file input.txt");
+    for (l, line) in io::BufReader::new(f).lines().enumerate() {
+        for (i, c) in line.expect("Failed to read line").chars().enumerate() {
+            if c == '#' {
+                elves.push(Elf { pos: (i as i32, l as i32), next_pos: (0, 0), next_dir: Dir::N, go_next: false });
+            }
+        }
+    }
+       for i in -5..15 {
+            for j in -5..15 {
+                let m = match elves.iter().find(|e| e.pos == (j, i)) {
+                    Some(_) => "#",
+                    None => ".",
+                };
+                print!("{}", m);
+            }
+            println!();
+        }
+        println!();
+    for c in 0..10 {
+        for i in 0..elves.len() {
+            match elves[i].next_pos(&elves) {
+                Some(pos) => {
+                    elves[i].next_pos = pos.0;
+                    elves[i].go_next = true;
+                }
+                None => elves[i].go_next = false,
+            }
+            elves[i].next_dir = elves[i].next_dir.next_dir();
+        }
+        'next_elf: for i in 0..elves.len() {
+            if !elves[i].go_next {
                 continue;
             }
-            grid.push(line.chars().collect());
-        }
-    }
-    let mut moves_index = 0;
-    let mut step_size = 0;
-    // right down left up
-    let mut facing: i32 = 0;
-    while moves_index < moves.len() {
-        let n_slice = moves[moves_index..]
-            .chars()
-            .take_while(|ch| ch.is_numeric())
-            .collect::<String>();
-        moves_index += n_slice.len();
-        step_size = n_slice.parse().expect("Failed to parse integer");
-
-        while step_size > 0 {
-            let sx = (1 - facing) % 2;
-            let sy = (2 - facing) % 2;
-            let mut y = ((grid.len() as i32) + row + sy) % (grid.len() as i32);
-            let mut x =
-                ((grid[y as usize].len() as i32) + column + sx) % (grid[y as usize].len() as i32);
-
-            while grid[y as usize][x as usize] == ' ' {
-                y = ((grid.len() as i32) + y + sy) % (grid.len() as i32);
-                x = ((grid[y as usize].len() as i32) + x + sx) % (grid[y as usize].len() as i32);
+            for j in i + 1..elves.len() {
+                if elves[i].next_pos == elves[j].next_pos {
+                    elves[i].go_next = false;
+                    elves[j].go_next = false;
+                    continue 'next_elf;
+                }
             }
-
-            if grid[y as usize][x as usize] == '#' {
-                println!("breaking");
-                break;
-            }
-            row = y;
-            column = x;
-
-            grid[y as usize][x as usize] = match facing {
-                0 => '>',
-                1 => 'v',
-                2 => '<',
-                3 => '^',
-                _ => panic!("Unexpected facing {}", facing),
-            };
-            step_size -= 1;
+            elves[i].pos = elves[i].next_pos;
         }
 
-        if moves_index < moves.len() {
-            let ch = moves[moves_index..=moves_index].chars().next();
-            match moves[moves_index..=moves_index].chars().next() {
-                Some('R') => facing = (facing + 1) % 4,
-                Some('L') => facing = (4 + facing - 1) % 4,
-                _ => panic!("Invalid facing"),
+        for i in -5..15 {
+            for j in -5..15 {
+                let m = match elves.iter().find(|e| e.pos == (j, i)) {
+                    Some(_) => "#",
+                    None => ".",
+                };
+                print!("{}", m);
             }
+            println!();
         }
-        moves_index += 1;
+        println!();
     }
-    for x in grid {
-        println!("{:?}", String::from_iter(x));
+
+    let mut x_min = i32::MAX;
+    let mut y_min = i32::MAX;
+    let mut x_max = 0;
+    let mut y_max = 0;
+    for elf in elves.iter() {
+        if elf.pos.0 < x_min {
+            x_min = elf.pos.0;
+        }
+        if elf.pos.0 > x_max {
+            x_max = elf.pos.0;
+        }
+        if elf.pos.1 < y_min {
+            y_min = elf.pos.1;
+        }
+        if elf.pos.1 > y_max {
+            y_max = elf.pos.1;
+        }
     }
-    println!("{} {} {}", facing, row, column);
-    println!("help {}", 1000 * (row + 1) + 4 * (column + 1) + facing);
+     for i in y_min..=y_max {
+            for j in x_min..=x_max {
+                let m = match elves.iter().find(|e| e.pos == (j, i)) {
+                    Some(_) => "#",
+                    None => ".",
+                };
+                print!("{}", m);
+            }
+            println!();
+        }
+        println!();
+
+    let area = (x_max - x_min + 1) * (y_max - y_min + 1);
+    println!("Area: {} {} {} {} {} {} {}", area, elves.len(), area-elves.len() as i32, x_min, x_max, y_min, y_max);
 }
